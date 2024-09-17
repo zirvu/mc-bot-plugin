@@ -1,0 +1,6 @@
+name: BotPlugin
+main: com.zirvumcai.project.BotPlugin
+version: 1.0
+api-version: 1.21
+author: Zirvu
+description: A Minecraft bot plugin for 1.21.1
