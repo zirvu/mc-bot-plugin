@@ -2,8 +2,10 @@ package com.zirvumcai.project;
 
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.Player;
@@ -16,8 +18,7 @@ import org.bukkit.util.Vector;
 
 public class BotPlugin extends JavaPlugin implements Listener {
 
-    private IronGolem golem;  // Reference to the golem that follows the player
-    private UUID golemUUID;   // Unique identifier for the golem
+    private UUID golemUUID;  // Unique identifier for the golem
 
     @Override
     public void onEnable() {
@@ -36,29 +37,48 @@ public class BotPlugin extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.getName().equals("zirvu1351")) {  // Replace with your player name if needed
-            if (golem == null || !golem.isValid()) {  // Check if the golem already exists or is invalid
+            // Try to find the existing golem using the stored UUID
+            IronGolem existingGolem = findExistingGolem();
+            if (existingGolem == null || !existingGolem.isValid()) {
+                // No valid golem found, spawn a new one
                 startFollowingPlayer(player);
             } else {
                 getLogger().info("The golem is already following the player.");
+                // Start following the player with the existing golem
+                startFollowingWithExistingGolem(existingGolem, player);
             }
         }
     }
 
-    // Method to make the golem follow the player
-    public void startFollowingPlayer(Player player) {
-        // Check if the golem already exists in the world
-        if (golem == null || !golem.isValid()) {
-            // Spawn a new Iron Golem
-            golem = (IronGolem) player.getWorld().spawnEntity(player.getLocation(), EntityType.IRON_GOLEM);
-            golemUUID = golem.getUniqueId();  // Store the golem's unique ID
-
-            // Make the golem invincible
-            golem.setInvulnerable(true);
-            golem.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(2048);  // Large health value
-            golem.setHealth(2048);  // Set current health to the max
+    // Method to find the existing golem in the world using the stored UUID
+    private IronGolem findExistingGolem() {
+        if (golemUUID != null) {
+            for (Entity entity : Bukkit.getWorlds().get(0).getEntities()) {
+                if (entity instanceof IronGolem && entity.getUniqueId().equals(golemUUID)) {
+                    return (IronGolem) entity;  // Return the existing golem
+                }
+            }
         }
+        return null;  // No golem found
+    }
 
-        // Make the bot follow the player smoothly
+    // Method to spawn a new golem and make it follow the player
+    public void startFollowingPlayer(Player player) {
+        // Spawn a new Iron Golem
+        IronGolem golem = (IronGolem) player.getWorld().spawnEntity(player.getLocation(), EntityType.IRON_GOLEM);
+        golemUUID = golem.getUniqueId();  // Store the golem's unique ID
+
+        // Make the golem invincible
+        golem.setInvulnerable(true);
+        golem.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(2048);  // Large health value
+        golem.setHealth(2048);  // Set current health to the max
+
+        // Start following the player smoothly
+        startFollowingWithExistingGolem(golem, player);
+    }
+
+    // Method to make the existing or new golem follow the player smoothly
+    public void startFollowingWithExistingGolem(IronGolem golem, Player player) {
         new BukkitRunnable() {
             @Override
             public void run() {
