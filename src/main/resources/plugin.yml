@@ -1,5 +1,5 @@
-name: BotPlugin
-main: com.zirvumcai.project.BotPlugin
+name: ZirvuBotPlugin
+main: com.zirvumcai.project.ZirvuBotPlugin
 version: 1.0
 api-version: 1.21
 author: Zirvu
