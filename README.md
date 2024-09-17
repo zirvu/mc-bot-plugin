@@ -46,25 +46,25 @@ The `helping.xml` contains predefined chat messages that the guardian can random
 
 1. **Summon Guardian**:
    ```
-   /help
+   help
    ```
    The guardian will appear and follow you.
 
 2. **Hold Guardian in Place**:
    ```
-   /hold
+   hold
    ```
    The guardian will stop moving and stay in place.
 
 3. **Release Guardian**:
    ```
-   /release
+   release
    ```
    The guardian will resume following or attacking nearby mobs.
 
 4. **Dismiss Guardian**:
    ```
-   /rest
+   rest
    ```
    The guardian will be removed from the world.
 
