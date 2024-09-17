@@ -6,12 +6,12 @@ import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.Vector;
 
 import java.util.List;
@@ -29,8 +29,7 @@ public class VillagerManager {
 
     // Handle the "help" command and summon or teleport the NPC
     public void handleHelpCommand(Player player) {
-        BukkitScheduler scheduler = Bukkit.getScheduler();
-        scheduler.runTask(plugin, () -> {
+        Bukkit.getScheduler().runTask(plugin, () -> {
             UUID storedUUID = dataHandler.getStoredVillagerUUID();
             Villager existingVillager = findVillagerByUUID(storedUUID);
 
@@ -44,15 +43,27 @@ public class VillagerManager {
         });
     }
 
-    // Summon a new Villager NPC
+    // Summon a new Villager NPC with a diamond sword and disable sleeping
     private void summonVillager(Player player) {
+        // Remove any existing villager before summoning a new one
+        // removeVillagerIfExists();
+
         Villager villager = (Villager) player.getWorld().spawnEntity(player.getLocation(), EntityType.VILLAGER);
+        villager.setCustomName("Guardian");  // Give it a name
+        villager.setCustomNameVisible(true);
         villager.setInvulnerable(true);
         villager.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(2048);
         villager.setHealth(2048);
 
-        ItemStack sword = new ItemStack(Material.IRON_SWORD);
+        // Equip the villager with a diamond sword and fire aspect
+        ItemStack sword = new ItemStack(Material.DIAMOND_SWORD);
+        sword.addEnchantment(org.bukkit.enchantments.Enchantment.FIRE_ASPECT, 2);  // Fire Aspect level 2
         villager.getEquipment().setItemInMainHand(sword);
+        villager.getEquipment().setItemInMainHandDropChance(0); // Prevent dropping the sword
+
+        // Disable villager's ability to sleep and prevent picking up items
+        villager.setAI(true);
+        villager.setCanPickupItems(false);
 
         // Save the NPC's UUID to the data file
         dataHandler.saveVillagerUUID(villager.getUniqueId());
@@ -78,32 +89,115 @@ public class VillagerManager {
             @Override
             public void run() {
                 if (player != null && npc != null && !npc.isDead() && player.isOnline()) {
-                    // Follow or attack mobs logic (simplified for example)
-                    Location playerLocation = player.getLocation();
-                    Location npcLocation = npc.getLocation();
-                    double distance = npcLocation.distance(playerLocation);
+                    // Check the distance between the protector and the player
+                    double distanceToPlayer = npc.getLocation().distance(player.getLocation());
 
-                    // Follow player logic
-                    if (distance > 3.0) {
-                        Vector direction = playerLocation.toVector().subtract(npcLocation.toVector()).normalize();
-                        npc.setVelocity(direction.multiply(0.2));
-                    } else {
-                        npc.setVelocity(new Vector(0, 0, 0));
+                    // If the protector is too far from the player (e.g., 15 blocks away), teleport to the player
+                    if (distanceToPlayer > 15.0) {
+                        npc.teleport(player.getLocation());
+                        return;
+                    }
+
+                    // Scan for nearby hostile mobs based on the player's location
+                    List<Entity> nearbyEntities = player.getNearbyEntities(10, 5, 10);  // Scan 10 blocks around the player
+                    boolean foundHostileMob = false;
+
+                    for (Entity entity : nearbyEntities) {
+                        if (isHostileMob(entity)) {  // Attack only hostile mobs
+                            foundHostileMob = true;
+                            attackHostileMob(npc, (Mob) entity);  // Attack hostile mob
+                            break;
+                        }
+                    }
+
+                    // If no hostile mobs are found, follow the player
+                    if (!foundHostileMob) {
+                        followPlayer(npc, player);  // Follow player if no mobs to attack
                     }
                 }
             }
         }.runTaskTimer(plugin, 0L, 20L); // Run every second
     }
 
-    // Remove the Villager if it exists
-    public void removeVillagerIfExists() {
-        UUID storedUUID = dataHandler.getStoredVillagerUUID();
-        Villager villager = findVillagerByUUID(storedUUID);
+    // Check if the entity is a hostile mob (Zombies, Skeletons, Creepers, etc.)
+    private boolean isHostileMob(Entity entity) {
+        return entity.getType() == EntityType.ZOMBIE || 
+               entity.getType() == EntityType.SKELETON ||
+               entity.getType() == EntityType.CREEPER ||
+               entity.getType() == EntityType.SPIDER ||
+               entity.getType() == EntityType.ENDERMAN ||  
+               entity.getType() == EntityType.PILLAGER || 
+               entity.getType() == EntityType.HUSK || 
+               entity.getType() == EntityType.STRAY ||
+               entity.getType() == EntityType.WITCH;
+    }
 
-        if (villager != null && !villager.isDead()) {
-            plugin.getLogger().info("Removing existing NPC.");
-            villager.remove();
-            dataHandler.clearVillagerUUID();  // Clear the saved UUID after removal
+    // Make the NPC attack a hostile mob
+    private void attackHostileMob(Villager npc, Mob mob) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (npc != null && !npc.isDead() && mob != null && !mob.isDead()) {
+                    Location npcLocation = npc.getLocation();
+                    Location mobLocation = mob.getLocation();
+
+                    double distance = npcLocation.distance(mobLocation);
+
+                    // Move the NPC toward the mob if it's more than 1 block away
+                    if (distance > 1.5) {
+                        Vector direction = mobLocation.toVector().subtract(npcLocation.toVector()).normalize();
+                        npc.setVelocity(direction.multiply(0.3));  // Move toward the mob
+                    } else {
+                        mob.damage(5, npc);  // Damage the mob with a 5 damage value
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);  // Run every tick for smooth attacking
+    }
+
+    // Make the NPC follow the player
+    private void followPlayer(Villager npc, Player player) {
+        Location playerLocation = player.getLocation();
+        Location npcLocation = npc.getLocation();
+
+        double distance = npcLocation.distance(playerLocation);
+
+        // Move the NPC toward the player if it's more than 3 blocks away
+        if (distance > 3.0) {
+            Vector direction = playerLocation.toVector().subtract(npcLocation.toVector()).normalize();
+            npc.setVelocity(direction.multiply(0.2));  // Adjust movement speed
+        } else {
+            npc.setVelocity(new Vector(0, 0, 0));  // Stop the NPC when close to the player
         }
     }
+
+    // Remove the Villager if it exists
+    public void removeVillagerIfExists() {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            UUID storedUUID = dataHandler.getStoredVillagerUUID();
+            Villager villager = findVillagerByUUID(storedUUID);
+
+            if (villager != null && !villager.isDead()) {
+                plugin.getLogger().info("Removing existing NPC.");
+                villager.remove();
+                dataHandler.clearVillagerUUID();  // Clear the saved UUID after removal
+            }
+        });
+    }
+
+    // Teleport the Villager to the player
+    public void teleportVillagerToPlayer(Player player) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            UUID storedUUID = dataHandler.getStoredVillagerUUID();
+            Villager villager = findVillagerByUUID(storedUUID);
+
+            if (villager != null && !villager.isDead()) {
+                plugin.getLogger().info("Teleporting Villager to player.");
+                villager.teleport(player.getLocation());
+            } else {
+                plugin.getLogger().warning("No Villager found to teleport.");
+            }
+        });
+    }
+
 }
