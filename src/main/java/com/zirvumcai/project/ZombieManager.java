@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
@@ -18,19 +19,110 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.util.Vector;
+import org.bukkit.ChatColor;
 
 import java.util.List;
 import java.util.UUID;
+
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.Random;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 public class ZombieManager implements Listener {
 
     private final JavaPlugin plugin;
     private final DataHandler dataHandler;
+    private List<String> helpMessages;
+    private boolean isOnHold = false;  // Tracks if the guardian is on hold
 
     public ZombieManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.dataHandler = new DataHandler(plugin);
         Bukkit.getPluginManager().registerEvents(this, plugin);  // Register event listeners
+        createChatDirectory();  // Create the directory and file if it doesn't exist
+        loadHelpMessages();     // Load messages on initialization
+    }
+
+    // Create the chat folder and helping.xml if they don't exist
+    private void createChatDirectory() {
+        try {
+            File chatFolder = new File(plugin.getDataFolder(), "chat/guardian");
+            if (!chatFolder.exists()) {
+                if (chatFolder.mkdirs()) {
+                    plugin.getLogger().info("Chat folder created.");
+                } else {
+                    plugin.getLogger().warning("Failed to create chat folder.");
+                }
+            }
+
+            // Check if helping.xml exists
+            File xmlFile = new File(chatFolder, "helping.xml");
+            if (!xmlFile.exists()) {
+                plugin.getLogger().info("helping.xml not found. Creating a default helping.xml.");
+
+                // Copy the helping.xml from the JAR resources to the plugin directory
+                try (InputStream inputStream = plugin.getResource("chat/guardian/helping.xml");
+                     OutputStream outputStream = new FileOutputStream(xmlFile)) {
+
+                    if (inputStream == null) {
+                        plugin.getLogger().severe("Default helping.xml not found in JAR.");
+                        return;
+                    }
+
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = inputStream.read(buffer)) > 0) {
+                        outputStream.write(buffer, 0, length);
+                    }
+
+                    plugin.getLogger().info("Default helping.xml created successfully.");
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error creating chat directory or helping.xml: " + e.getMessage());
+        }
+    }
+
+    // Load help messages from XML
+    private void loadHelpMessages() {
+        helpMessages = new ArrayList<>();
+        try {
+            File xmlFile = new File(plugin.getDataFolder(), "chat/guardian/helping.xml");
+            if (!xmlFile.exists()) {
+                plugin.getLogger().warning("helping.xml not found! Using default messages.");
+                return;
+            }
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(xmlFile);
+            doc.getDocumentElement().normalize();
+
+            NodeList nodeList = doc.getElementsByTagName("message");
+            for (int i = 0; i < nodeList.getLength(); i++) {
+                helpMessages.add(nodeList.item(i).getTextContent());
+            }
+
+            plugin.getLogger().info("Loaded " + helpMessages.size() + " help messages.");
+
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to load helping.xml: " + e.getMessage());
+        }
+    }
+
+    // Get a random help message
+    private String getRandomHelpMessage() {
+        if (helpMessages.isEmpty()) {
+            return "I'm here to help, but not sure how!";
+        }
+        Random random = new Random();
+        return helpMessages.get(random.nextInt(helpMessages.size()));
     }
 
     // Handle the "help" command and summon or teleport the NPC
@@ -46,6 +138,9 @@ public class ZombieManager implements Listener {
                 plugin.getLogger().info("NPC found. Teleporting to player.");
                 existingZombie.teleport(player.getLocation());  // Teleport on the main thread
             }
+            String message = getRandomHelpMessage();
+            player.sendMessage(message);
+            plugin.getLogger().info("Guardian said: " + message);
         });
     }
 
@@ -62,8 +157,8 @@ public class ZombieManager implements Listener {
 
         // Equip the zombie with a diamond sword and fire aspect
         ItemStack sword = new ItemStack(Material.DIAMOND_SWORD);
-        sword.addEnchantment(org.bukkit.enchantments.Enchantment.FIRE_ASPECT, 2);  // Fire Aspect level 2
-        sword.addEnchantment(org.bukkit.enchantments.Enchantment.SHARPNESS, 5);    // Sharpness V
+        sword.addEnchantment(Enchantment.FIRE_ASPECT, 2);  // Fire Aspect level 2
+        sword.addEnchantment(Enchantment.SHARPNESS, 5);    // Sharpness V
         zombie.getEquipment().setItemInMainHand(sword);
         zombie.getEquipment().setItemInMainHandDropChance(0);  // Prevent dropping the sword
 
@@ -81,32 +176,32 @@ public class ZombieManager implements Listener {
     private void equipZombieWithDiamondArmor(Zombie zombie) {
         // Diamond helmet
         ItemStack helmet = new ItemStack(Material.DIAMOND_HELMET);
-        helmet.addEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION, 4);  // Protection IV
-        helmet.addEnchantment(org.bukkit.enchantments.Enchantment.UNBREAKING, 3);  // Unbreaking III
-        helmet.addEnchantment(org.bukkit.enchantments.Enchantment.AQUA_AFFINITY, 1);  // Aqua Affinity
+        helmet.addEnchantment(Enchantment.PROTECTION, 4);  // Protection IV
+        helmet.addEnchantment(Enchantment.UNBREAKING, 3);  // Unbreaking III
+        helmet.addEnchantment(Enchantment.AQUA_AFFINITY, 1);  // Aqua Affinity
         zombie.getEquipment().setHelmet(helmet);
         zombie.getEquipment().setHelmetDropChance(0);  // Prevent helmet from dropping
 
         // Diamond chestplate
         ItemStack chestplate = new ItemStack(Material.DIAMOND_CHESTPLATE);
-        chestplate.addEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION, 4);  // Protection IV
-        chestplate.addEnchantment(org.bukkit.enchantments.Enchantment.UNBREAKING, 3);  // Unbreaking III
-        chestplate.addEnchantment(org.bukkit.enchantments.Enchantment.THORNS, 3);  // Thorns III
+        chestplate.addEnchantment(Enchantment.PROTECTION, 4);  // Protection IV
+        chestplate.addEnchantment(Enchantment.UNBREAKING, 3);  // Unbreaking III
+        chestplate.addEnchantment(Enchantment.THORNS, 3);  // Thorns III
         zombie.getEquipment().setChestplate(chestplate);
         zombie.getEquipment().setChestplateDropChance(0);  // Prevent chestplate from dropping
 
         // Diamond leggings
         ItemStack leggings = new ItemStack(Material.DIAMOND_LEGGINGS);
-        leggings.addEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION, 4);  // Protection IV
-        leggings.addEnchantment(org.bukkit.enchantments.Enchantment.UNBREAKING, 3);  // Unbreaking III
+        leggings.addEnchantment(Enchantment.PROTECTION, 4);  // Protection IV
+        leggings.addEnchantment(Enchantment.UNBREAKING, 3);  // Unbreaking III
         zombie.getEquipment().setLeggings(leggings);
         zombie.getEquipment().setLeggingsDropChance(0);  // Prevent leggings from dropping
 
         // Diamond boots (without Frost Walker)
         ItemStack boots = new ItemStack(Material.DIAMOND_BOOTS);
-        boots.addEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION, 4);  // Protection IV
-        boots.addEnchantment(org.bukkit.enchantments.Enchantment.UNBREAKING, 3);  // Unbreaking III
-        boots.addEnchantment(org.bukkit.enchantments.Enchantment.DEPTH_STRIDER, 3);  // Depth Strider III
+        boots.addEnchantment(Enchantment.PROTECTION, 4);  // Protection IV
+        boots.addEnchantment(Enchantment.UNBREAKING, 3);  // Unbreaking III
+        boots.addEnchantment(Enchantment.DEPTH_STRIDER, 3);  // Depth Strider III
         zombie.getEquipment().setBoots(boots);
         zombie.getEquipment().setBootsDropChance(0);  // Prevent boots from dropping
     }
@@ -140,6 +235,11 @@ public class ZombieManager implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (isOnHold) {
+                    npc.setVelocity(new Vector(0, 0, 0));  // Stop movement when in hold state
+                    return;
+                }
+
                 if (player != null && npc != null && !npc.isDead() && player.isOnline()) {
                     // Check the distance between the protector and the player
                     double distanceToPlayer = npc.getLocation().distance(player.getLocation());
@@ -250,6 +350,18 @@ public class ZombieManager implements Listener {
                 plugin.getLogger().warning("No Zombie found to teleport.");
             }
         });
+    }
+
+    // Hold position command
+    public void handleHoldCommand(Player player) {
+        isOnHold = true;  // Activate hold state
+        player.sendMessage(ChatColor.BLUE + "The guardian will now hold its position.");
+    }
+
+    // Release position command
+    public void handleReleaseCommand(Player player) {
+        isOnHold = false;  // Deactivate hold state
+        player.sendMessage(ChatColor.BLUE + "The guardian is now free to move again.");
     }
 
 }
