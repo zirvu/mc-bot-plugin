@@ -15,24 +15,24 @@ public class DataHandler {
         this.config = plugin.getConfig();
     }
 
-    // Save the Villager UUID to the configuration file
-    public void saveVillagerUUID(UUID uuid) {
-        config.set("villager-uuid", uuid.toString());
+    // Save the Zombie UUID to the configuration file
+    public void saveZombieUUID(UUID uuid) {
+        config.set("zombie-uuid", uuid.toString());
         plugin.saveConfig();
     }
 
-    // Get the stored Villager UUID
-    public UUID getStoredVillagerUUID() {
-        String uuidString = config.getString("villager-uuid");
+    // Get the stored Zombie UUID
+    public UUID getStoredZombieUUID() {
+        String uuidString = config.getString("zombie-uuid");
         if (uuidString != null) {
             return UUID.fromString(uuidString);
         }
         return null;
     }
 
-    // Clear the Villager UUID from the configuration
-    public void clearVillagerUUID() {
-        config.set("villager-uuid", null);
+    // Clear the Zombie UUID from the configuration
+    public void clearZombieUUID() {
+        config.set("zombie-uuid", null);
         plugin.saveConfig();
     }
 }

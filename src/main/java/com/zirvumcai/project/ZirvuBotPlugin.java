@@ -12,13 +12,13 @@ import org.bukkit.Bukkit;
 
 public class ZirvuBotPlugin extends JavaPlugin implements Listener {
 
-    private VillagerManager villagerManager;  // Manager for Villager operations
+    private ZombieManager zombieManager;  // Manager for Zombie operations
 
     @Override
     public void onEnable() {
         getLogger().info("ZirvuBotPlugin has been enabled!");
-        // Initialize the VillagerManager
-        villagerManager = new VillagerManager(this);
+        // Initialize the ZombieManager
+        zombieManager = new ZombieManager(this);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(this, this);
@@ -41,26 +41,14 @@ public class ZirvuBotPlugin extends JavaPlugin implements Listener {
             // Handle the "help" command
             if (player.getName().equals("zirvu1351") && message.equalsIgnoreCase("help")) {
                 getLogger().info("Player zirvu1351 sent 'help' in chat.");
-                villagerManager.handleHelpCommand(player);  // Summon or teleport the villager
+                zombieManager.handleHelpCommand(player);  // Summon or teleport the zombie
 
             // Handle the "rest" command (only called when explicitly stated)
             } else if (player.getName().equals("zirvu1351") && message.equalsIgnoreCase("rest")) {
                 getLogger().info("Player zirvu1351 sent 'rest' in chat.");
-                villagerManager.removeVillagerIfExists();  // Remove (kill) the villager
+                zombieManager.removeZombieIfExists();  // Remove (kill) the zombie
             }
         });
-    }
-
-    // Event handler for when the player gets damaged
-    @EventHandler
-    public void onPlayerDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player) {
-            Player player = (Player) event.getEntity();
-            if (player.getName().equals("zirvu1351")) {
-                getLogger().info("Player zirvu1351 has been damaged. Summoning protector.");
-                villagerManager.teleportVillagerToPlayer(player);  // Teleport the Villager to the player when damaged
-            }
-        }
     }
 
     // Handle when a player quits or gets kicked
@@ -77,7 +65,7 @@ public class ZirvuBotPlugin extends JavaPlugin implements Listener {
     // Handle player disconnection and remove the NPC if needed
     private void handlePlayerDisconnect(Player player) {
         if (player.getName().equals("zirvu1351")) {
-            Bukkit.getScheduler().runTask(this, () -> villagerManager.removeVillagerIfExists());  // Remove the villager if the player disconnects
+            Bukkit.getScheduler().runTask(this, () -> zombieManager.removeZombieIfExists());  // Remove the zombie if the player disconnects
         }
     }
 }
