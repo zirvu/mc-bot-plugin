@@ -32,13 +32,23 @@ public class ZirvuBotPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         String message = event.getMessage().toLowerCase();
 
-        if (player.getName().equals("zirvu1351") && message.equals("help")) {
+        // if (player.getName().equals("zirvu1351") && message.equals("help")) {
+        //     zombieManager.handleHelpCommand(player);
+        // } else if (player.getName().equals("zirvu1351") && message.equals("rest")) {
+        //     zombieManager.removeZombieIfExists();
+        // } else if (player.getName().equals("zirvu1351") && message.equals("hold")) {
+        //     zombieManager.handleHoldCommand(player);
+        // } else if (player.getName().equals("zirvu1351") && message.equals("release")) {
+        //     zombieManager.handleReleaseCommand(player);
+        // }
+
+        if (message.equals("help")) {
             zombieManager.handleHelpCommand(player);
-        } else if (player.getName().equals("zirvu1351") && message.equals("rest")) {
+        } else if (message.equals("rest")) {
             zombieManager.removeZombieIfExists();
-        } else if (player.getName().equals("zirvu1351") && message.equals("hold")) {
+        } else if (message.equals("hold")) {
             zombieManager.handleHoldCommand(player);
-        } else if (player.getName().equals("zirvu1351") && message.equals("release")) {
+        } else if (message.equals("release")) {
             zombieManager.handleReleaseCommand(player);
         }
     }
@@ -56,9 +66,10 @@ public class ZirvuBotPlugin extends JavaPlugin implements Listener {
 
     // Handle player disconnection and remove the NPC if needed
     private void handlePlayerDisconnect(Player player) {
-        if (player.getName().equals("zirvu1351")) {
-            Bukkit.getScheduler().runTask(this, () -> zombieManager.removeZombieIfExists());  // Remove the zombie if the player disconnects
-        }
+        // if (player.getName().equals("zirvu1351")) {
+            // Bukkit.getScheduler().runTask(this, () -> zombieManager.removeZombieIfExists());  // Remove the zombie if the player disconnects
+        // }
+        zombieManager.handleHoldCommand(player);
     }
 
 }

@@ -10,6 +10,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
+import org.bukkit.entity.IronGolem;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -20,6 +21,11 @@ import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.util.Vector;
 import org.bukkit.ChatColor;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Openable;
+import org.bukkit.event.block.Action;
+import org.bukkit.block.BlockFace;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +47,7 @@ public class ZombieManager implements Listener {
     private final DataHandler dataHandler;
     private List<String> helpMessages;
     private boolean isOnHold = false;  // Tracks if the guardian is on hold
+    private Location holdLocation = null;
 
     public ZombieManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -139,7 +146,7 @@ public class ZombieManager implements Listener {
                 existingZombie.teleport(player.getLocation());  // Teleport on the main thread
             }
             String message = getRandomHelpMessage();
-            player.sendMessage(message);
+            player.sendMessage(ChatColor.BLUE + message);
             plugin.getLogger().info("Guardian said: " + message);
         });
     }
@@ -150,10 +157,14 @@ public class ZombieManager implements Listener {
         zombie.setCustomName("Guardian");  // Give it a name
         zombie.setCustomNameVisible(true);
         zombie.setBaby(true);  // Make it a baby zombie
-        zombie.setInvulnerable(true);
-        zombie.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(2048);
-        zombie.setHealth(2048);
+        // zombie.setInvulnerable(true);
+        // zombie.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(2048);
+        // zombie.setHealth(2048);
+        zombie.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(500);
+        zombie.setHealth(500);
         zombie.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, Integer.MAX_VALUE, 1));  // Prevent burning in sunlight
+        zombie.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1));
+        zombie.setSilent(true);
 
         // Equip the zombie with a diamond sword and fire aspect
         ItemStack sword = new ItemStack(Material.DIAMOND_SWORD);
@@ -212,8 +223,8 @@ public class ZombieManager implements Listener {
         if (event.getEntity() instanceof Zombie) {
             Zombie zombie = (Zombie) event.getEntity();
             if (zombie.getCustomName() != null && zombie.getCustomName().equals("Guardian")) {
-                if (event.getTarget() instanceof Player) {
-                    event.setCancelled(true);  // Cancel targeting the player
+                if (event.getTarget() instanceof Player || event.getTarget() instanceof IronGolem) {
+                    event.setCancelled(true);  // Cancel targeting the player and golem
                 }
             }
         }
@@ -235,20 +246,36 @@ public class ZombieManager implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (isOnHold) {
-                    npc.setVelocity(new Vector(0, 0, 0));  // Stop movement when in hold state
+                if (npc == null || npc.isDead()) {
+                    this.cancel(); // Cancel the task if the NPC is no longer valid
                     return;
                 }
+
+                if (isOnHold) {
+                    if (holdLocation == null) {
+                        // Save the current location when the hold command is activated
+                        holdLocation = npc.getLocation().clone();
+                    }
+
+                    // Keep teleporting the guardian to the saved location to prevent movement
+                    npc.teleport(holdLocation);
+                    npc.setAI(false);  // Disable AI to stop all actions
+
+                    return;  // Do not perform any other action while on hold
+                } else {
+                    // If the guardian is released from hold, re-enable AI and clear hold location
+                    npc.setAI(true);
+                    holdLocation = null;
+                }
+
+                // if (isOnHold) {
+                //     npc.setVelocity(new Vector(0, 0, 0));  // Stop movement when in hold state
+                //     return;
+                // }
 
                 if (player != null && npc != null && !npc.isDead() && player.isOnline()) {
                     // Check the distance between the protector and the player
                     double distanceToPlayer = npc.getLocation().distance(player.getLocation());
-
-                    // If the protector is too far from the player (e.g., 7 blocks away), teleport to the player
-                    if (distanceToPlayer > 7.0) {
-                        npc.teleport(player.getLocation());
-                        return;
-                    }
 
                     // Scan for nearby hostile mobs based on the player's location
                     List<Entity> nearbyEntities = player.getNearbyEntities(10, 5, 10);  // Scan 10 blocks around the player
@@ -260,6 +287,12 @@ public class ZombieManager implements Listener {
                             attackHostileMob(npc, (Mob) entity);  // Attack hostile mob
                             break;
                         }
+                    }
+
+                    // If the protector is too far from the player (e.g., 15 blocks away), teleport to the player
+                    if (distanceToPlayer > 15.0 && !foundHostileMob) {
+                        npc.teleport(player.getLocation());
+                        return;
                     }
 
                     // If no hostile mobs are found, follow the player
