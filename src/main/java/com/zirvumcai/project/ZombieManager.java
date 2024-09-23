@@ -311,10 +311,31 @@ public class ZombieManager implements Listener {
                entity.getType() == EntityType.CREEPER ||
                entity.getType() == EntityType.SPIDER ||
                entity.getType() == EntityType.ENDERMAN ||  
-               entity.getType() == EntityType.PILLAGER || 
+               entity.getType() == EntityType.PILLAGER ||
+               entity.getType() == EntityType.VINDICATOR ||
+               entity.getType() == EntityType.EVOKER ||
+               entity.getType() == EntityType.RAVAGER ||
+               entity.getType() == EntityType.VEX ||
                entity.getType() == EntityType.HUSK || 
                entity.getType() == EntityType.STRAY ||
-               entity.getType() == EntityType.WITCH;
+               entity.getType() == EntityType.WITCH ||
+               entity.getType() == EntityType.ZOMBIFIED_PIGLIN || 
+               entity.getType() == EntityType.DROWNED || 
+               entity.getType() == EntityType.PHANTOM || 
+               entity.getType() == EntityType.SLIME ||
+               entity.getType() == EntityType.MAGMA_CUBE ||
+               entity.getType() == EntityType.GHAST ||
+               entity.getType() == EntityType.BLAZE ||
+               entity.getType() == EntityType.WITHER_SKELETON ||
+               entity.getType() == EntityType.SHULKER ||
+               entity.getType() == EntityType.SILVERFISH ||
+               entity.getType() == EntityType.ENDERMITE ||
+               entity.getType() == EntityType.HOGLIN ||
+               entity.getType() == EntityType.PIGLIN ||
+               entity.getType() == EntityType.PIGLIN_BRUTE ||
+               entity.getType() == EntityType.ZOGLIN ||
+               entity.getType() == EntityType.WITHER ||
+               entity.getType() == EntityType.ENDER_DRAGON;
     }
 
     // Make the NPC attack a hostile mob
