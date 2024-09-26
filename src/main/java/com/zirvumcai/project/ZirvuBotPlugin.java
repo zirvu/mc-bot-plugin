@@ -45,7 +45,7 @@ public class ZirvuBotPlugin extends JavaPlugin implements Listener {
         if (message.equals("help")) {
             zombieManager.handleHelpCommand(player);
         } else if (message.equals("rest")) {
-            zombieManager.removeZombieIfExists();
+            zombieManager.removeZombieIfExists(player);
         } else if (message.equals("hold")) {
             zombieManager.handleHoldCommand(player);
         } else if (message.equals("release")) {

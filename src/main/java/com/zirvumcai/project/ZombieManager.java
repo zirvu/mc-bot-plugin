@@ -26,6 +26,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.Openable;
 import org.bukkit.event.block.Action;
 import org.bukkit.block.BlockFace;
+import org.bukkit.event.entity.EntityDeathEvent;
 
 import java.util.List;
 import java.util.UUID;
@@ -378,7 +379,7 @@ public class ZombieManager implements Listener {
     }
 
     // Remove the Zombie if it exists
-    public void removeZombieIfExists() {
+    public void removeZombieIfExists(Player player) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             UUID storedUUID = dataHandler.getStoredZombieUUID();
             Zombie zombie = findZombieByUUID(storedUUID);
@@ -387,6 +388,7 @@ public class ZombieManager implements Listener {
                 plugin.getLogger().info("Removing existing NPC.");
                 zombie.remove();
                 dataHandler.clearZombieUUID();  // Clear the saved UUID after removal
+                player.sendMessage(ChatColor.RED + getRandomRestMessage());
             }
         });
     }
@@ -416,6 +418,58 @@ public class ZombieManager implements Listener {
     public void handleReleaseCommand(Player player) {
         isOnHold = false;  // Deactivate hold state
         player.sendMessage(ChatColor.BLUE + "The guardian is now free to move again.");
+    }
+
+    // Method to get a random funny death message
+    private String getRandomDeathMessage() {
+        String[] deathMessages = {
+            "Oops, I guess this is goodbye. You owe me a pizza though!",
+            "Well, that escalated quickly...",
+            "I didn't sign up for this level of commitment!",
+            "Who knew dying could be this much fun? See ya!",
+            "Looks like my shift is over. Time for a nap.",
+            "Tell my diamond sword... I loved it!",
+            "Respawn is a myth. Wait, no it’s not. Be right back!",
+            "I'll be haunting you from the afterlife, don’t worry!"
+        };
+
+        Random random = new Random();
+        return deathMessages[random.nextInt(deathMessages.length)];
+    }
+
+    // Method to get a random funny rest message
+    private String getRandomRestMessage() {
+        String[] restMessages = {
+            "Finally, a break! Wake me up when it's over.",
+            "Ahh, time for a nap. Try not to get into too much trouble!",
+            "Resting? I thought you'd never ask!",
+            "Great! Now I can dream about bacon... and swords.",
+            "Guardian on break. I’ll be back after a power nap!",
+            "Well, I guess I’m clocking out for now.",
+            "Sweet dreams for the guardian, nightmares for the enemies!"
+        };
+
+        Random random = new Random();
+        return restMessages[random.nextInt(restMessages.length)];
+    }
+
+    // Add this method to handle zombie death event
+    @EventHandler
+    public void onZombieDeath(EntityDeathEvent event) {
+        if (event.getEntity() instanceof Zombie) {
+            Zombie zombie = (Zombie) event.getEntity();
+            if (zombie.getCustomName() != null && zombie.getCustomName().equals("Guardian")) {
+                // Get the nearby players to send the death message
+                List<Entity> nearbyEntities = zombie.getNearbyEntities(10, 5, 10);  // Scan 10 blocks around the zombie
+                for (Entity entity : nearbyEntities) {
+                    if (entity instanceof Player) {
+                        Player player = (Player) entity;
+                        player.sendMessage(ChatColor.RED + getRandomDeathMessage());
+                    }
+                }
+                plugin.getLogger().info("Guardian died and sent a message.");
+            }
+        }
     }
 
 }
